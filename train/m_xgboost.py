@@ -219,6 +219,54 @@ class M_XGBOOST(object):
 
         return rmse, mape, est
 
+    def profit(self, y_true, y_pred, mape):
+        profits = 0 # sum of profits
+        do = 0 # num of transactions
+        rights = 0 # num of sell > buy
+        wrongs = 0 # num of buy >= sell
+
+        for index, _ in y_true.iteritems():
+            if index == y_true.index[-1]:
+                break
+
+            # get last one predict up and down
+            up = y_pred[index+1] * (100 + mape) / 100
+            down = y_pred[index+1] * (100 - mape) / 100
+            print(index, y_true[index], up, down)
+
+            # buy some the first day and sell it the next day
+            if y_true[index] < down: # do it
+                buy = y_true[index]
+                sell = min(down, y_true[index+1])
+                profits += sell - buy
+                print("buy: ", buy, " sell: ", sell)
+
+                do += 1
+                if sell > buy:
+                    rights += 1
+                else:
+                    wrongs += 1
+
+            # sell some the first day and buy it the next day
+            if y_true[index] > up:
+                sell = y_true[index]
+                buy = max(up, y_pred[index+1])
+                profits += sell - buy
+                print("buy: ", buy, " sell: ", sell)
+
+                do += 1
+                if sell > buy:
+                    rights += 1
+                else:
+                    wrongs += 1
+
+        print("sum of profits: ", profits)
+        print("num of transactions: ", do)
+        print("num of right transactions: ", rights)
+        print("num of wrong transactions: ", wrongs)
+        return profits
+
+
     def _scale_row(self, row, feat_mean, feat_std):
         """
         Given a pandas series in row, scale it to have 0 mean and var 1 using feat_mean and feat_std
