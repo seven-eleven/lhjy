@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import utils
+import matplotlib.pyplot as plt
 
 from sklearn.preprocessing import StandardScaler
 from keras.models import Sequential, load_model
@@ -86,7 +87,6 @@ class M_LSTM(object):
             # get last one predict up and down
             up = y_pred[index+1] * (100 + mape) / 100
             down = y_pred[index+1] * (100 - mape) / 100
-            print(index, y_true[index], up, down)
 
             # buy some the first day and sell it the next day
             if y_true[index] < down: # do it
@@ -119,6 +119,21 @@ class M_LSTM(object):
         print("num of right transactions: ", rights)
         print("num of wrong transactions: ", wrongs)
         return profits
+
+    def draw(self, y_true, y_pred):
+        plt.figure(figsize=(60, 5))
+        plt.title('pred and true value with LSTM')
+
+        index = range(len(y_true))
+        plt.plot(index, y_true, c='g', label='true value')
+        plt.plot(index, y_pred, c='r', label='pred value')
+        plt.legend()
+
+        # 设置坐标轴名称
+        plt.xlabel('date')
+        plt.ylabel('close value')
+
+        plt.show()
 
     def _save_model(self, model):
         model.save('../model/lstm.h5')
@@ -156,8 +171,8 @@ class M_LSTM(object):
         print("num_test = " + str(num_test))
 
         # Split into train, and test
-        train = df[:num_train][['date', 'adj_close']]
-        test = df[num_train:][['date', 'adj_close']]
+        train = df[:num_train][['date', 'close']]
+        test = df[num_train:][['date', 'close']]
 
         print("train.shape = " + str(train.shape))
         print("test.shape = " + str(test.shape))
@@ -165,7 +180,7 @@ class M_LSTM(object):
         # Converting dataset into x_train and y_train
         # Here we only scale the train dataset, and not the entire dataset to prevent information leak
         scaler = StandardScaler()
-        train_scaled = scaler.fit_transform(np.array(train['adj_close']).reshape(-1, 1))
+        train_scaled = scaler.fit_transform(np.array(train['close']).reshape(-1, 1))
         print("scaler.mean_ = " + str(scaler.mean_))
         print("scaler.var_ = " + str(scaler.var_))
 
@@ -176,7 +191,7 @@ class M_LSTM(object):
 
         # Scale the test dataset
         # Split into x and y
-        x_test_scaled, y_test, mu_test_list, std_test_list = self._get_x_scaled_y(np.array(df['adj_close']).reshape(-1, 1), self.N,
+        x_test_scaled, y_test, mu_test_list, std_test_list = self._get_x_scaled_y(np.array(df['close']).reshape(-1, 1), self.N,
                                                                     num_train)
         print("x_test_scaled.shape = " + str(x_test_scaled.shape))
         print("y_test.shape = " + str(y_test.shape))

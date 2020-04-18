@@ -3,10 +3,12 @@ import numpy as np
 import pandas as pd
 import pickle
 import utils
+import matplotlib.pyplot as plt
 
 from sklearn.preprocessing import StandardScaler
 from tqdm import tqdm_notebook
 from xgboost import XGBRegressor
+from pylab import rcParams
 
 class M_XGBOOST(object):
     def __init__(self):
@@ -47,7 +49,7 @@ class M_XGBOOST(object):
 
         # Get difference between open and close of each day
         df['range_oc'] = df['open'] - df['close']
-        df.drop(['open', 'close'], axis=1, inplace=True)
+        df.drop(['open'], axis=1, inplace=True)
 
         print(df.head())
 
@@ -58,7 +60,7 @@ class M_XGBOOST(object):
         merging_keys = ['order_day']
 
         # List of columns that we will use to create lags
-        lag_cols = ['adj_close', 'range_hl', 'range_oc', 'volume']
+        lag_cols = ['close', 'range_hl', 'range_oc', 'volume']
 
         shift_range = [x + 1 for x in range(self.N)]
 
@@ -82,7 +84,7 @@ class M_XGBOOST(object):
         print(df.head())
 
         cols_list = [
-            "adj_close",
+            "close",
             "range_hl",
             "range_oc",
             "volume"
@@ -107,11 +109,11 @@ class M_XGBOOST(object):
 
         ## scale data
         cols_to_scale = [
-            "adj_close"
+            "close"
         ]
 
         for i in range(1, self.N + 1):
-            cols_to_scale.append("adj_close_lag_" + str(i))
+            cols_to_scale.append("close_lag_" + str(i))
             cols_to_scale.append("range_hl_lag_" + str(i))
             cols_to_scale.append("range_oc_lag_" + str(i))
             cols_to_scale.append("volume_lag_" + str(i))
@@ -143,12 +145,12 @@ class M_XGBOOST(object):
         # split into x and y
         features = []
         for i in range(1, self.N + 1):
-            features.append("adj_close_lag_" + str(i))
+            features.append("close_lag_" + str(i))
             features.append("range_hl_lag_" + str(i))
             features.append("range_oc_lag_" + str(i))
             features.append("volume_lag_" + str(i))
 
-        target = "adj_close"
+        target = "close"
 
         # Split into X and y
         X_train = train[features]
@@ -232,7 +234,6 @@ class M_XGBOOST(object):
             # get last one predict up and down
             up = y_pred[index+1] * (100 + mape) / 100
             down = y_pred[index+1] * (100 - mape) / 100
-            print(index, y_true[index], up, down)
 
             # buy some the first day and sell it the next day
             if y_true[index] < down: # do it
@@ -266,6 +267,19 @@ class M_XGBOOST(object):
         print("num of wrong transactions: ", wrongs)
         return profits
 
+    def draw(self, y_true, y_pred):
+        plt.figure(figsize=(60, 5))
+        plt.title('pred and true value with XGBOOST')
+
+        plt.plot(y_true.index, y_true, c='g', label='true value')
+        plt.plot(y_true.index, y_pred, c='r', label='pred value')
+        plt.legend()
+
+        # 设置坐标轴名称
+        plt.xlabel('date')
+        plt.ylabel('close value')
+
+        plt.show()
 
     def _scale_row(self, row, feat_mean, feat_std):
         """
@@ -277,7 +291,7 @@ class M_XGBOOST(object):
         Outputs
             row_scaled : pandas series with same length as row, but scaled
         """
-        # If feat_std = 0 (this happens if adj_close doesn't change over N days),
+        # If feat_std = 0 (this happens if close doesn't change over N days),
         # set it to a small number to avoid division by zero
         feat_std = 0.001 if feat_std == 0 else feat_std
 
